@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Select, Input } from 'antd';
+import { Select, Input, Button } from 'antd';
 
 import API from '@/api';
 import { Block, ExternalLink } from '@/components';
@@ -38,6 +38,7 @@ interface GithubAppSettings {
   appId?: string;
   secretKey?: string;
   installationId?: number;
+  expiresAt?: number;
 
   status: 'idle' | 'valid' | 'invalid';
   from?: string;
@@ -100,6 +101,7 @@ export const GithubApp = ({ endpoint, proxy, initialValue, value, error, setValu
         status: 'valid',
         from: res.login,
         installations: res.installations,
+        expiresAt: res.expiresAt,
       };
     } catch {
       return {
@@ -145,6 +147,18 @@ export const GithubApp = ({ endpoint, proxy, initialValue, value, error, setValu
 
     return () => clearInterval(interval);
   }, [settings.appId, settings.secretKey, settings.installationId]);
+
+  const handleRotateToken = async () => {
+    if (value.installationId) {
+      try {
+        await API.connection.rotateToken('github', value.installationId);
+        const res = await testConfiguration(settings.appId, settings.secretKey, settings.installationId);
+        setSettings(res);
+      } catch (error) {
+        console.error('Failed to rotate token:', error);
+      }
+    }
+  };
 
   return (
     <Block
@@ -206,6 +220,16 @@ export const GithubApp = ({ endpoint, proxy, initialValue, value, error, setValu
           onChange={(value) => setSettings({ ...settings, installationId: value })}
         />
       </S.Input>
+      {settings.expiresAt && (
+        <S.Input>
+          <div className="input">
+            <span>Token Expires At: {new Date(settings.expiresAt * 1000).toLocaleString()}</span>
+            <Button type="primary" onClick={handleRotateToken}>
+              Rotate Token
+            </Button>
+          </div>
+        </S.Input>
+      )}
     </Block>
   );
 };

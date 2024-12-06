@@ -52,3 +52,10 @@ Please note that GitHub Server integration is not included to ease the onboardin
 5. The token will be refreshed automatically every hour to ensure continuous authentication.
 
 For detailed instructions, refer to [this doc](https://devlake.apache.org/docs/Configuration/GitHub/#github-app-authentication).
+
+##### Q5. How to view the ExpiresAt field and use the token rotation button?
+
+1. Navigate to the **Connections** page.
+2. Click on GitHub, and click on the connection you want to view.
+3. The ExpiresAt field will be displayed, showing the token expiration time.
+4. To force a new token, click the "Rotate Token" button.

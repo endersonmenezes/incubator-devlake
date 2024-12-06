@@ -56,6 +56,7 @@ type GithubConn struct {
 	helper.MultiAuth      `mapstructure:",squash"`
 	GithubAccessToken     `mapstructure:",squash" authMethod:"AccessToken"`
 	GithubAppKey          `mapstructure:",squash" authMethod:"AppKey"`
+	ExpiresAt             int64 `json:"expiresAt"`
 }
 
 // PrepareApiClient splits Token to tokens for SetupAuthentication to utilize
@@ -73,6 +74,7 @@ func (conn *GithubConn) PrepareApiClient(apiClient plugin.ApiClient) errors.Erro
 
 		conn.Token = token.Token
 		conn.tokens = []string{token.Token}
+		conn.ExpiresAt = token.ExpiresAt
 	}
 
 	return nil

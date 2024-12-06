@@ -7,7 +7,6 @@
  * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -58,6 +57,7 @@ export const Token = ({
 }: Props) => {
   const [loading, setLoading] = useState(false);
   const [tokens, setTokens] = useState<TokenItem[]>([{ value: '' }]);
+  const [refreshInterval, setRefreshInterval] = useState(60); // Default to 60 minutes
 
   const testToken = async (token: string): Promise<TokenItem> => {
     if (!endpoint || !token) {
@@ -135,6 +135,15 @@ export const Token = ({
     }
   };
 
+  // Token refresh mechanism
+  useEffect(() => {
+    const interval = setInterval(() => {
+      tokens.forEach((_, i) => handleTestToken(i));
+    }, refreshInterval * 60000); // Refresh token based on the input interval
+
+    return () => clearInterval(interval);
+  }, [tokens, refreshInterval]);
+
   return (
     <Block
       title="Personal Access Token(s)"
@@ -199,6 +208,18 @@ export const Token = ({
           Another Token
         </Button>
       </div>
+      <S.Input>
+        <div className="input">
+          <Input
+            type="number"
+            min={1}
+            max={59}
+            value={refreshInterval}
+            onChange={(e) => setRefreshInterval(Number(e.target.value))}
+            placeholder="Refresh Interval (minutes)"
+          />
+        </div>
+      </S.Input>
     </Block>
   );
 };

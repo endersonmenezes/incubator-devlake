@@ -59,6 +59,7 @@ type GithubTestConnResponse struct {
 	Login         string                         `json:"login"`
 	Warning       bool                           `json:"warning"`
 	Installations []models.GithubAppInstallation `json:"installations"`
+	ExpiresAt     int64                          `json:"expiresAt"`
 }
 
 // TestConnection test github connection
@@ -160,6 +161,7 @@ func testConnection(ctx context.Context, conn models.GithubConn) (*GithubTestCon
 			githubApiResponse.Message = tokenTestResult.Message
 			githubApiResponse.Login = tokenTestResult.Login
 			githubApiResponse.Installations = tokenTestResult.Installations
+			githubApiResponse.ExpiresAt = tokenTestResult.ExpiresAt
 		}
 	} else if conn.AuthMethod == models.AccessToken {
 		if tokenTestResult, err := testGithubConnAccessTokenAuth(ctx, conn); err != nil {
@@ -192,6 +194,7 @@ type GitHubTestConnResult struct {
 	Login         string                         `json:"login"`
 	Warning       bool                           `json:"warning"`
 	Installations []models.GithubAppInstallation `json:"installations,omitempty"`
+	ExpiresAt     int64                          `json:"expiresAt,omitempty"`
 }
 
 type GithubMultiTestConnResponse struct {
@@ -317,6 +320,7 @@ func getInstallationsWithGithubConnAppKeyAuth(ctx context.Context, conn models.G
 		Message:        "success",
 		Login:          githubApp.Slug,
 		Installations:  *githubAppInstallations,
+		ExpiresAt:      conn.ExpiresAt,
 	}
 	return &tokenTestResult, nil
 }
@@ -532,4 +536,36 @@ func GetConnectionTransformToDeployments(input *plugin.ApiResourceInput) (*plugi
 	return &plugin.ApiResourceOutput{
 		Body: result,
 	}, nil
+}
+
+// RotateToken forces a new token for the given connection
+// @Summary force a new token for the given connection
+// @Description Force a new token for the given connection
+// @Tags plugins/github
+// @Param connectionId path int true "connection ID"
+// @Success 200  {object} shared.ApiBody
+// @Failure 400  {string} errcode.Error "Bad Request"
+// @Failure 500  {string} errcode.Error "Internal Error"
+// @Router /plugins/github/connections/{connectionId}/rotate-token [POST]
+func RotateToken(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
+	connection, err := dsHelper.ConnApi.GetMergedConnection(input)
+	if err != nil {
+		return nil, errors.Convert(err)
+	}
+
+	// Force a new token
+	token, err := connection.GithubConn.getInstallationAccessToken(apiClient)
+	if err != nil {
+		return nil, errors.Convert(err)
+	}
+	connection.GithubConn.Token = token.Token
+	connection.GithubConn.ExpiresAt = token.ExpiresAt
+
+	// Save the updated connection
+	err = dsHelper.ConnApi.Save(connection)
+	if err != nil {
+		return nil, errors.Convert(err)
+	}
+
+	return &plugin.ApiResourceOutput{Body: shared.ApiBody{Success: true, Message: "Token rotated successfully"}, Status: http.StatusOK}, nil
 }
