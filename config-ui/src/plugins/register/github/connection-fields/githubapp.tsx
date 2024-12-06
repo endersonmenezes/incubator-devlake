@@ -137,6 +137,15 @@ export const GithubApp = ({ endpoint, proxy, initialValue, value, error, setValu
     setValue({ appId: settings.appId, secretKey: settings.secretKey, installationId: settings.installationId });
   }, [settings.appId, settings.secretKey, settings.installationId]);
 
+  // Token refresh mechanism
+  useEffect(() => {
+    const interval = setInterval(() => {
+      handleTestConfiguration();
+    }, 3600000); // Refresh token every hour
+
+    return () => clearInterval(interval);
+  }, [settings.appId, settings.secretKey, settings.installationId]);
+
   return (
     <Block
       title="GitHub App Settings"

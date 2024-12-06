@@ -327,6 +327,14 @@ func testGithubConnAppKeyAuth(ctx context.Context, conn models.GithubConn) (*Git
 	// I think connection with InstallationID needs another test
 	// But it's to be determined. So just ignore it temporarily.
 	conn.InstallationID = 0
+
+	// Token refresh logic
+	token, err := conn.getInstallationAccessToken(apiClient)
+	if err != nil {
+		return nil, err
+	}
+	conn.Token = token.Token
+
 	return getInstallationsWithGithubConnAppKeyAuth(ctx, conn)
 }
 

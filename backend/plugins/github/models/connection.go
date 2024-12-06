@@ -47,6 +47,7 @@ type GithubAccessToken struct {
 type GithubAppKey struct {
 	helper.AppKey  `mapstructure:",squash"`
 	InstallationID int `mapstructure:"installationId" validate:"required" json:"installationId"`
+	ExpiresAt      int64 `json:"expiresAt"`
 }
 
 // GithubConn holds the essential information to connect to the GitHub API
@@ -336,7 +337,8 @@ type GithubUserOfToken struct {
 }
 
 type InstallationToken struct {
-	Token string `json:"token"`
+	Token     string `json:"token"`
+	ExpiresAt int64  `json:"expires_at"`
 }
 
 type GithubApp struct {
@@ -407,4 +409,16 @@ func (gak *GithubAppKey) getInstallationAccessToken(
 	}
 
 	return &installationToken, nil
+}
+
+func (gak *GithubAppKey) RefreshTokenIfNeeded(apiClient plugin.ApiClient) errors.Error {
+	if time.Now().Unix() >= gak.ExpiresAt {
+		token, err := gak.getInstallationAccessToken(apiClient)
+		if err != nil {
+			return err
+		}
+		gak.Token = token.Token
+		gak.ExpiresAt = token.ExpiresAt
+	}
+	return nil
 }

@@ -42,3 +42,13 @@ Yes, you can.
 3. Select 'GitHub Server' and finish the configuration.
 
 Please note that GitHub Server integration is not included to ease the onboarding process.
+
+##### Q4. How to configure GitHub App authentication with token refresh?
+
+1. Navigate to the **Connections** page.
+2. Click on GitHub, and click on **Create a New Connection**.
+3. Select 'GitHub App' as the authentication method.
+4. Enter your GitHub App ID, Secret Key, and select the installation.
+5. The token will be refreshed automatically every hour to ensure continuous authentication.
+
+For detailed instructions, refer to [this doc](https://devlake.apache.org/docs/Configuration/GitHub/#github-app-authentication).
