@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -130,7 +131,7 @@ func DeleteConnection(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput
 // @Failure 400  {string} errcode.Error "Bad Request"
 // @Failure 500  {string} errcode.Error "Internal Error"
 // @Router /plugins/github/connections [GET]
-func ListConnections(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
+func ListConnections(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput) {
 	return dsHelper.ConnApi.GetAll(input)
 }
 
@@ -524,4 +525,64 @@ func GetConnectionTransformToDeployments(input *plugin.ApiResourceInput) (*plugi
 	return &plugin.ApiResourceOutput{
 		Body: result,
 	}, nil
+}
+
+// RefreshGithubAppToken refreshes the GitHub App token if it has expired
+func RefreshGithubAppToken(ctx context.Context, conn *models.GithubConn) errors.Error {
+	if conn.AuthMethod != models.AppKey {
+		return nil
+	}
+
+	apiClient, err := api.NewApiClientFromConnection(ctx, basicRes, conn)
+	if err != nil {
+		return err
+	}
+
+	jwt, err := conn.GithubAppKey.CreateJwt()
+	if err != nil {
+		return err
+	}
+
+	res, err := apiClient.Get("app/installations", nil, http.Header{
+		"Authorization": []string{fmt.Sprintf("Bearer %s", jwt)},
+	})
+	if err != nil {
+		return errors.BadInput.Wrap(err, "failed to refresh GitHub App token")
+	}
+	if res.StatusCode != http.StatusOK {
+		return errors.HttpStatus(res.StatusCode).New("unexpected status code while refreshing GitHub App token")
+	}
+
+	githubAppInstallations := &[]models.GithubAppInstallation{}
+	err = api.UnmarshalResponse(res, githubAppInstallations)
+	if err != nil {
+		return errors.BadInput.Wrap(err, "failed to unmarshal GitHub App installations response")
+	}
+
+	// Update the token expiration time
+	conn.TokenExpiresAt = time.Now().Add(time.Hour)
+	return nil
+}
+
+// ForceRefreshGithubAppToken forces the regeneration of the GitHub App token
+// @Summary force refresh GitHub App token
+// @Description Force refresh GitHub App token
+// @Tags plugins/github
+// @Param connectionId path int true "connection ID"
+// @Success 200  {object} shared.ApiBody
+// @Failure 400  {string} errcode.Error "Bad Request"
+// @Failure 500  {string} errcode.Error "Internal Error"
+// @Router /plugins/github/connections/{connectionId}/force-refresh-token [POST]
+func ForceRefreshGithubAppToken(input *plugin.ApiResourceInput) (*plugin.ApiResourceOutput, errors.Error) {
+	connection, err := dsHelper.ConnApi.GetMergedConnection(input)
+	if err != nil {
+		return nil, errors.Convert(err)
+	}
+
+	err = RefreshGithubAppToken(context.TODO(), &connection.GithubConn)
+	if err != nil {
+		return nil, plugin.WrapTestConnectionErrResp(basicRes, err)
+	}
+
+	return &plugin.ApiResourceOutput{Body: shared.ApiBody{Success: true, Message: "GitHub App token refreshed successfully"}, Status: http.StatusOK}, nil
 }

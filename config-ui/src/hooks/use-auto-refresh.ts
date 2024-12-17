@@ -29,6 +29,7 @@ export const useAutoRefresh = <T>(
 ) => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<T>();
+  const [tokenExpiration, setTokenExpiration] = useState<Date | null>(null);
 
   const timer = useRef<any>();
   const retryCount = useRef<number>(0);
@@ -38,6 +39,9 @@ export const useAutoRefresh = <T>(
     request()
       .then((data: T) => {
         setData(data);
+        if ((data as any).tokenExpiration) {
+          setTokenExpiration(new Date((data as any).tokenExpiration));
+        }
       })
       .finally(() => {
         setLoading(false);
@@ -51,6 +55,9 @@ export const useAutoRefresh = <T>(
       request()
         .then((data) => {
           setData(data);
+          if ((data as any).tokenExpiration) {
+            setTokenExpiration(new Date((data as any).tokenExpiration));
+          }
         })
         .finally(() => {
           setLoading(false);
@@ -65,11 +72,17 @@ export const useAutoRefresh = <T>(
     }
   }, [data]);
 
+  const forceRegenerateToken = () => {
+    // Implement the logic to force regenerate the token
+  };
+
   return useMemo(
     () => ({
       loading,
       data,
+      tokenExpiration,
+      forceRegenerateToken,
     }),
-    [loading, data],
+    [loading, data, tokenExpiration],
   );
 };

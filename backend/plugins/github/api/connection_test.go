@@ -18,8 +18,11 @@ limitations under the License.
 package api
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	"github.com/apache/incubator-devlake/plugins/github/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,4 +50,34 @@ func TestFindMissingPerms(t *testing.T) {
 	requiredPerms = []string{"repo:status", "read:user"}
 	missingPerms = findMissingPerms(userPerms, requiredPerms)
 	assert.Equal(t, []string{"repo:status", "read:user"}, missingPerms)
+}
+
+func TestRefreshGithubAppToken(t *testing.T) {
+	conn := &models.GithubConn{
+		AuthMethod: models.AppKey,
+		GithubAppKey: models.GithubAppKey{
+			AppId:     "test-app-id",
+			SecretKey: "test-secret-key",
+		},
+		TokenExpiresAt: time.Now().Add(-time.Hour),
+	}
+
+	err := RefreshGithubAppToken(context.TODO(), conn)
+	assert.Nil(t, err)
+	assert.True(t, conn.TokenExpiresAt.After(time.Now()))
+}
+
+func TestForceRefreshGithubAppToken(t *testing.T) {
+	conn := &models.GithubConn{
+		AuthMethod: models.AppKey,
+		GithubAppKey: models.GithubAppKey{
+			AppId:     "test-app-id",
+			SecretKey: "test-secret-key",
+		},
+		TokenExpiresAt: time.Now().Add(time.Hour),
+	}
+
+	err := RefreshGithubAppToken(context.TODO(), conn)
+	assert.Nil(t, err)
+	assert.True(t, conn.TokenExpiresAt.After(time.Now()))
 }
